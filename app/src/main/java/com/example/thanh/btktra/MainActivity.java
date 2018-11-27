@@ -1,19 +1,32 @@
 package com.example.thanh.btktra;
 
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TabHost;
-
+import android.widget.Toast;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
+    String DB_PATH_SUFFIX = "/databases/";
+    public static SQLiteDatabase database = null;
+    public static  String DATABASE_NAME = "arirang.sqlite";
     EditText edttim;
     ListView lv1,lv2,lv3;
     TabHost tab;
+    ImageButton btnxoa;
     ArrayList<Item> list1, list2, list3;
     myarrayAdapter  myarray1,myarray2,myarray3;
 
@@ -21,35 +34,94 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        processCopy();
+        database = openOrCreateDatabase("arirang.sqlite", MODE_PRIVATE, null);
         addControl();
+        addTim();
         addEvent();
     }
     private void addEvent() {
         tab.setOnTabChangedListener(new TabHost.OnTabChangeListener() {
             @Override
             public void onTabChanged(String tabId) {
-                if(tabId.equalsIgnoreCase("t1")) {
-                    list1.clear();
-                    list1.add(new Item("52300", "Em là ai Tôi là ai", 0));
-                    list1.add(new Item("52600", "Chén Đắng", 1));
-                    myarray1.notifyDataSetChanged();
-                }
                 if(tabId.equalsIgnoreCase("t2")) {
-                    list2.clear();
-                    list2.add(new Item("57236", "Gởi em ở cuối sông Hồng", 0));
-                    list2.add(new Item("58716", "Say tinh", 0));
-                    myarray2.notifyDataSetChanged();
+                    addDanhsach();
                 }
                 if(tabId.equalsIgnoreCase("t3")) {
-                    list3.clear();
-                    list3.add(new Item("57689", "Hát với dòng sông", 1));
-                    list3.add(new Item("51548", "Say tình - Remix", 0));
-                    myarray3.notifyDataSetChanged();
+                    addYeuThich();
                 }
+        }
+
+        });
+        btnxoa.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                edttim.setText("");
             }
         });
     }
+    private void addYeuThich() {
+        myarray3.clear();
+        Cursor c = database.rawQuery("SELECT * FROM ArirangSongList WHERE YEUTHICH = 1",null);
+        c.moveToFirst();
+        while (c.isAfterLast()==false)
+        {
+            list3.add(new Item(c.getString(1),c.getString(2),c.getInt(6)));
+            c.moveToNext();
+        }
+        c.close();
+        myarray3.notifyDataSetChanged();
+    }
+    private void addDanhsach() {
+        myarray2.clear();
+        Cursor c = database.rawQuery("SELECT * FROM ArirangSongList",null);
+        c.moveToFirst();
+        while (c.isAfterLast()==false)
+        {
+            list2.add(new Item(c.getString(1),c.getString(2),c.getInt(6)));
+            c.moveToNext();
+        }
+        c.close();
+        myarray2.notifyDataSetChanged();
+    }
+    private void addTim() {
+        edttim.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int before, int count) {
+                getdata();
+            }
+
+            private void getdata() {
+                String dulieunhap = edttim.getText().toString();
+                myarray1.clear();
+                if(!edttim.getText().toString().equals("")) {
+                    Cursor c =database.rawQuery
+                            ("SELECT * FROM ArirangSongList WHERE TENBH1 LIKE '"+"%"+dulieunhap+
+                                    "%"+"' OR MABH LIKE '"+"%"+dulieunhap+"%"+"'",null);
+                    c.moveToFirst();
+                    while (c.isAfterLast()==false) {
+                        list1.add(new Item(c.getString(1),c.getString(2),c.getInt(6)));
+                        c.moveToNext();
+                    }
+                    c.close();
+                }
+                myarray1.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
+    }
+
     private void addControl() {
+        btnxoa = findViewById(R.id.btnxoa);
         tab = (TabHost) findViewById(R.id.tab);
         tab.setup();
         TabHost.TabSpec tab1 = tab.newTabSpec("t1");
@@ -64,13 +136,13 @@ public class MainActivity extends AppCompatActivity {
         tab3.setContent(R.id.tab3);
         tab3.setIndicator("",getResources().getDrawable(R.drawable.favourite));
         tab.addTab(tab3);
-        edttim = findViewById(R.id.edtim);
+        edttim = findViewById(R.id.edttim);
         lv1 = findViewById(R.id.lv1);
         lv2 = findViewById(R.id.lv2);
         lv3 = findViewById(R.id.lv3);
-        list1 = new ArrayList<>();
-        list2 = new ArrayList<>();
-        list3 = new ArrayList<>();
+        list1 = new ArrayList<Item>();
+        list2 = new ArrayList<Item>();
+        list3 = new ArrayList<Item>();
         myarray1 = new myarrayAdapter(MainActivity.this,R.layout.custum_listview,list1);
         myarray2 = new myarrayAdapter(MainActivity.this,R.layout.custum_listview,list2);
         myarray3 = new myarrayAdapter(MainActivity.this,R.layout.custum_listview,list3);
@@ -78,6 +150,51 @@ public class MainActivity extends AppCompatActivity {
         lv2.setAdapter(myarray2);
         lv3.setAdapter(myarray3);
 
+    }
+    private void processCopy() {
+        //private app
+        File dbFile = getDatabasePath(DATABASE_NAME);
+        if (!dbFile.exists())
+        {
+            try{CopyDataBaseFromAsset();
+                Toast.makeText(this, "Copying sucess from Assets folder", Toast.LENGTH_LONG).show();
+            }
+            catch (Exception e){
+                Toast.makeText(this, e.toString(), Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+    private String getDatabasePath() {
+        return getApplicationInfo().dataDir + DB_PATH_SUFFIX+ DATABASE_NAME;
+    }
+    public void CopyDataBaseFromAsset() {
+        // TODO Auto-generated method stub
+        try {
+            InputStream myInput;
+            myInput = getAssets().open(DATABASE_NAME);
+            // Path to the just created empty db
+            String outFileName = getDatabasePath();
+            //if the path doesn't exist first, create it
+            File f = new File(getApplicationInfo().dataDir + DB_PATH_SUFFIX);
+            if (!f.exists())
+                f.mkdir();
+            //Open the empty db as the output stream
+            OutputStream myOutput = new FileOutputStream(outFileName);
+            //transfer bytes from the inputfile to the outputfile
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = myInput.read(buffer)) > 0)
+            {
+                myOutput.write(buffer, 0, length);
+            }
+            //Close the streams
+            myOutput.flush();
+            myOutput.close();
+            myInput.close();
+        } catch (IOException e) {
+            //TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
 }

@@ -1,15 +1,15 @@
 package com.example.thanh.btktra;
-
-import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-public class activitysub extends Activity {
+public class activitysub extends AppCompatActivity {
     TextView txtmaso, txtbaihat, txtloibaihat, txttacgia;
     ImageButton btnthich, btnkhongthich;
 
@@ -19,6 +19,7 @@ public class activitysub extends Activity {
         setContentView(R.layout.subactivity);
         txtmaso = findViewById(R.id.txtmaso);
         txtbaihat = findViewById(R.id.txtbaihat);
+        txtloibaihat = findViewById(R.id.txtloibaihat);
         txttacgia = findViewById(R.id.txttacgia);
         btnthich = findViewById(R.id.btnthich);
         btnkhongthich = findViewById(R.id.btnkhongthich);
@@ -26,7 +27,7 @@ public class activitysub extends Activity {
         Bundle backagecaller1 = intentcaller1.getBundleExtra("pakage");
         String maso = backagecaller1.getString("maso");
         Cursor c = MainActivity.database.rawQuery
-                ("SELECT * FORM ArirangSongList WHERE MABH LIKE'"+maso+"'",null);
+                ("SELECT * FROM ArirangSongList WHERE MABH LIKE'"+maso+"'",null);
         txtmaso.setText(maso);
         c.moveToFirst();
         txtbaihat.setText(c.getString(2));
@@ -45,7 +46,7 @@ public class activitysub extends Activity {
             public void onClick(View v) {
                 ContentValues values = new ContentValues();
                 values.put("YEUTHICH",0);
-                MainActivity.database.update("ArirangSongList", values, "MABH = ?",
+                MainActivity.database.update("ArirangSongList", values, "MABH=?",
                         new String[]{txtmaso.getText().toString()});
                 btnthich.setVisibility(View.INVISIBLE);
                 btnkhongthich.setVisibility(View.VISIBLE);
@@ -56,11 +57,17 @@ public class activitysub extends Activity {
             public void onClick(View v) {
                 ContentValues values = new ContentValues();
                 values.put("YEUTHICH",1);
-                MainActivity.database.update("ArirangSongList", values, "MABH = ?",
+                MainActivity.database.update("ArirangSongList", values, "MABH=?",
                         new String[]{txtmaso.getText().toString()});
                 btnkhongthich.setVisibility(View.INVISIBLE);
                 btnthich.setVisibility(View.VISIBLE);
-
+            }
+        });
+        Button btnback = findViewById(R.id.btnback);
+        btnback.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
             }
         });
     }
